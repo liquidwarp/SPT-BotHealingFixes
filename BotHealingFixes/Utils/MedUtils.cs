@@ -132,7 +132,7 @@ public static class MedUtils
         botMeds._owner.Medecine.SurgicalKit._nextPosibleUseTime = nextPossibleUseTime;
         botMeds._owner.Medecine.Stimulators._nextPosibleUseTime = Mathf.Max(
             botMeds._owner.Medecine.Stimulators._nextPosibleUseTime,
-            Time.time + botMeds._owner.Settings.FileSettings.Mind.HEAL_DELAY_SEC
+            nextPossibleUseTime
         );
 
         switch (botMeds)
