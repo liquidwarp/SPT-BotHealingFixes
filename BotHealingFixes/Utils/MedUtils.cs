@@ -22,26 +22,20 @@ public static class MedUtils
         Action<BotOwner>
     >("_onEndApply");
 
-    public static async Task ApplyMedicineAsync(this BotAbstractMedsToPart botMeds, Action callback)
+    public static async Task ApplyMedicineAsync(this BotAbstractMedsToPart botMeds, TimeSpan timeout, Action callback)
     {
         L.Debug($"{botMeds.GetType()}: {botMeds.Name()} Start");
 
         botMeds.Using = true;
         botMeds._owner.BotTalk.Say(EPhraseTrigger.StartHeal);
-
-        var timeout = TimeSpan.FromSeconds(30d);
         if (botMeds is BotFirstAid firstAid)
         {
             _onStartApplyField(firstAid)?.Invoke(firstAid._owner);
         }
-        else
-        {
-            timeout = TimeSpan.FromSeconds(60d);
-        }
 
         var setInHandsSource = new TaskCompletionSource<Result<IMedsController>>();
 
-        // A timeout is not needed anymore, but just to be sure...
+        // A timeout is probably not needed anymore, but just to be sure...
         var timeoutSource = new CancellationTokenSource();
         timeoutSource.CancelAfter(timeout);
         var setInHandsRegistration = timeoutSource.Token.Register(
@@ -76,7 +70,7 @@ public static class MedUtils
                 );
 
                 hands.Value.SetOnUsedCallback(onUseSource.SetResult);
-                var onUseResult = await onUseSource.Task;
+                await onUseSource.Task;
 
                 if (hands.Succeed && hands.Value is Player.MedsController medsController)
                 {
@@ -84,9 +78,7 @@ public static class MedUtils
                 }
                 botMeds._owner.WeaponManager.Selector.TakePrevWeapon();
 
-                L.Debug(
-                    $"{botMeds.GetType()}: {botMeds.Name()} Finished applying meds, status: {(onUseResult.Succeed ? "succeed" : $"{onUseResult.Error}")}"
-                );
+                L.Debug($"{botMeds.GetType()}: {botMeds.Name()} Finished applying meds, status: {successful}");
             }
             else
             {

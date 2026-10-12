@@ -145,5 +145,4 @@ public class DebugHealLayer(BotOwner botOwner, int priority) : CustomLayer(botOw
         return val ? "(Broken)" : string.Empty;
     }
 }
-
 #endif

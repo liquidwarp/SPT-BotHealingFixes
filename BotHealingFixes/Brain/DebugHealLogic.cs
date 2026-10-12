@@ -29,5 +29,4 @@ public class DebugHealLogic(BotOwner botOwner) : CustomLogic(botOwner)
         ((ActiveHealthController)BotOwner.HealthController).DoBleed(isHeavy, part);
     }
 }
-
 #endif

@@ -16,7 +16,7 @@ public class BotMedKitPatch : ModulePatch
     [PatchPrefix]
     public static bool PatchPrefix(BotFirstAid __instance, Action callback)
     {
-        _ = __instance.ApplyMedicineAsync(callback);
+        _ = __instance.ApplyMedicineAsync(TimeSpan.FromSeconds(30D), callback);
         return false;
     }
 }

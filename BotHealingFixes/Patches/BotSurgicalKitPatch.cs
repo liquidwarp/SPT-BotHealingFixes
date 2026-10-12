@@ -26,7 +26,7 @@ public class BotSurgicalKitPatch : ModulePatch
             return false;
         }
 
-        _ = __instance.ApplyMedicineAsync(callbackEndUse);
+        _ = __instance.ApplyMedicineAsync(TimeSpan.FromSeconds(60D), callbackEndUse);
         return false;
     }
 }
