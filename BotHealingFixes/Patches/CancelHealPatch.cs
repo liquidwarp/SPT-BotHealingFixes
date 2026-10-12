@@ -67,6 +67,7 @@ public class CancelHealPatch : ModulePatch
     {
         if (owner.GetPlayer.HandsController is Player.MedsController medsController)
         {
+            medsController._failedToApply = true;
             medsController.CurrentOperation.State = Player.EOperationState.Finished;
         }
     }

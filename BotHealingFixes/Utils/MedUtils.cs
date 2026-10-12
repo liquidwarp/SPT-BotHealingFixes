@@ -78,7 +78,10 @@ public static class MedUtils
                 hands.Value.SetOnUsedCallback(onUseSource.SetResult);
                 var onUseResult = await onUseSource.Task;
 
-                successful = true;
+                if (hands.Succeed && hands.Value is Player.MedsController medsController)
+                {
+                    successful = !medsController._failedToApply;
+                }
                 botMeds._owner.WeaponManager.Selector.TakePrevWeapon();
 
                 L.Debug(
