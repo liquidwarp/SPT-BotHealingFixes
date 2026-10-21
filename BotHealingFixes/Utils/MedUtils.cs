@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Comfort.Common;
@@ -127,15 +128,20 @@ public static class MedUtils
             nextPossibleUseTime
         );
 
+        // Items can do both first aid and surgery, so whichever was used, the other's pick may no longer afford its job.
+        // (e.g. from mod MakeMedsGreatAgain)
+        // Re-check damaged parts after refreshing so IsBleeding reflects the newly picked item.
+        var medecine = botMeds._owner.Medecine;
         switch (botMeds)
         {
             case BotFirstAid firstAid:
+                firstAid.RefreshMeds();
+                firstAid.FindDamagedPart();
                 if (successful)
                 {
-                    firstAid.FindDamagedPart();
                     firstAid.FirstAidApplied();
                 }
-                firstAid.RefreshMeds();
+                medecine.SurgicalKit.RefreshMeds();
                 firstAid._lastEndTime = Time.time;
                 _onEndApplyField(firstAid)?.Invoke(botMeds._owner);
                 break;
@@ -143,9 +149,10 @@ public static class MedUtils
                 if (successful)
                 {
                     surgical.FindDamagedPart();
-                    surgical._owner.Medecine.FirstAid.FindDamagedPart();
                 }
                 surgical.RefreshMeds();
+                medecine.FirstAid.RefreshMeds();
+                medecine.FirstAid.FindDamagedPart();
                 break;
         }
         callback?.Invoke();
@@ -170,6 +177,99 @@ public static class MedUtils
         }
         cost = 0;
         return false;
+    }
+
+    public static List<Meds> GetAvailableMeds(this BotAbstractMeds botMeds, bool shallUseInSafe)
+    {
+        var medsList = botMeds._medsList;
+        medsList.Clear();
+        botMeds._owner.GetPlayer.InventoryController.GetAcceptableItemsNonAlloc(
+            shallUseInSafe ? BotMedecine.secureSlots : BotMedecine.anySlots,
+            medsList
+        );
+        return medsList;
+    }
+
+    /// Tourniquets and bandages first, then medkits so their HP goes to healing, then surgical kits so their uses go to surgery.
+    public static int GetBleedMedsRank(Meds meds)
+    {
+        if (meds is MedKit)
+        {
+            return 1;
+        }
+        return meds.HealthEffectsComponent.Affects(EDamageEffectType.DestroyedPart, out _) ? 2 : 0;
+    }
+
+    public static bool CanAfford(Meds meds, EDamageEffectType damageEffect)
+    {
+        return meds.HealthEffectsComponent.Affects(damageEffect, out var cost)
+            && (meds.MedKitComponent == null || cost <= meds.MedKitComponent.HpResource);
+    }
+
+    public static bool CanTreat(this IHealthController health, Meds meds, EDamageEffectType damageEffect, EBodyPart bodyPart)
+    {
+        return CanAfford(meds, damageEffect) && health.CanApplyItem(meds, bodyPart);
+    }
+
+    /// Dedicated surgical kits (CMS, Surv12) before medkits, which mods like MakeMedsGreatAgain give surgery, so surgery doesn't
+    /// drain the bot's HP healing.
+    public static Meds FindSurgeryMeds(List<Meds> medsList)
+    {
+        Meds medKit = null;
+        foreach (var meds in medsList)
+        {
+            if (meds is MedKit && medKit != null)
+            {
+                continue;
+            }
+            if (!CanAfford(meds, EDamageEffectType.DestroyedPart))
+            {
+                continue;
+            }
+            if (meds is not MedKit)
+            {
+                return meds;
+            }
+            medKit ??= meds;
+        }
+        return medKit;
+    }
+
+    /// Heavy before light, among the bleed types the item lists, whatever their cost.
+    public static Meds FindBleedMeds(this IHealthController health, List<Meds> medsList)
+    {
+        var heavyBleeding = health.FindExistingEffect<IHeavyBleeding>() != null;
+        var lightBleeding = health.FindExistingEffect<ILightBleeding>() != null;
+        if (!heavyBleeding && !lightBleeding)
+        {
+            return null;
+        }
+
+        Meds bestMeds = null;
+        var bestRank = int.MaxValue;
+        foreach (var meds in medsList)
+        {
+            var rank = GetBleedMedsRank(meds);
+            if (rank < bestRank && CanTreatTargetBleed(meds, heavyBleeding, lightBleeding))
+            {
+                bestMeds = meds;
+                bestRank = rank;
+                if (rank == 0)
+                {
+                    break;
+                }
+            }
+        }
+        return bestMeds;
+    }
+
+    private static bool CanTreatTargetBleed(Meds meds, bool heavyBleeding, bool lightBleeding)
+    {
+        if (heavyBleeding && meds.HealthEffectsComponent.Affects(EDamageEffectType.HeavyBleeding, out _))
+        {
+            return CanAfford(meds, EDamageEffectType.HeavyBleeding);
+        }
+        return lightBleeding && CanAfford(meds, EDamageEffectType.LightBleeding);
     }
 
     public enum EBleedType

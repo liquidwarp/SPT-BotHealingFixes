@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using BotHealingFixes.Utils;
+using EFT.InventoryLogic;
 using HarmonyLib;
 using SPT.Reflection.Patching;
 
@@ -20,7 +21,11 @@ public class BotSurgicalKitPatch : ModulePatch
             !__instance._bodyPartToHeal.HasValue
             || !__instance.HaveSmth2Use
             || __instance._owner.WeaponManager.Reload.Reloading
-            || !__instance._owner.GetPlayer.HealthController.CanApplyItem(__instance.CurUsingMeds, __instance._bodyPartToHeal.Value)
+            || !__instance._owner.GetPlayer.HealthController.CanTreat(
+                __instance.CurUsingMeds,
+                EDamageEffectType.DestroyedPart,
+                __instance._bodyPartToHeal.Value
+            )
         )
         {
             return false;
