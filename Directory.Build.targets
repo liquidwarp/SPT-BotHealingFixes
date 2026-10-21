@@ -1,39 +1,60 @@
 <Project>
-  <!-- Paths -->
-  <PropertyGroup>
-    <SPTPath Condition=" '$(SPTPath)' == '' ">$(SolutionDir)..\..\</SPTPath>
-    <FikaHeadPath Condition=" '$(FikaHeadPath)' == '' ">$(SolutionDir)..\..\..\SPTarkov.4.1-Fika-Headless\</FikaHeadPath>
-    <!--    <FikaClientPath Condition=" '$(FikaClientPath)' == '' ">$(SolutionDir)..\..\..\SPTarkov.4.1-Fika-Client\</FikaClientPath>-->
-  </PropertyGroup>
 
-  <!-- To SPT Dir -->
-  <Target Name="CopyOutput" AfterTargets="Build">
-    <Copy SourceFiles="@(OutputDLL)" DestinationFolder="$(SPTPath)$(DestDir)" />
-    <Copy SourceFiles="@(Config)" DestinationFolder="$(SPTPath)$(DestDir)\config\%(RecursiveDir)" />
-    <Copy SourceFiles="@(Bundles)" DestinationFolder="$(SPTPath)$(DestDir)\bundles\%(RecursiveDir)" />
+  <Target Name="GenerateMyModInfo" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <MyModInfoFile>$(IntermediateOutputPath)MyModInfo.g.cs</MyModInfoFile>
+      <MyModInfoText><![CDATA[
+namespace $(RootNamespace)%3B
+
+internal static class MyModInfo
+{
+    public const string MOD_GUID = "$(ModGuid)"%3B
+    public const string MOD_NAME = "$(Product)"%3B
+    public const string MOD_AUTHOR = "$(Authors)"%3B
+    public const string MOD_VERSION = "$(Version)"%3B
+    public const string CLIENT_SPT_VERSION = "$(ClientSPTVersion)"%3B
+}
+]]></MyModInfoText>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(MyModInfoFile)" Lines="$(MyModInfoText)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(MyModInfoFile)" />
+      <FileWrites Include="$(MyModInfoFile)" />
+    </ItemGroup>
   </Target>
 
-  <!-- To Fika Dir -->
-  <Target Name="CopyOutputFikaHeadless" AfterTargets="Build" Condition="'$(FikaHeadPath)' != ''">
-    <Copy SourceFiles="@(OutputDLL)" DestinationFolder="$(FikaHeadPath)$(DestDir)" />
-    <Copy SourceFiles="@(Config)" DestinationFolder="$(FikaHeadPath)$(DestDir)\config\%(RecursiveDir)" />
-    <Copy SourceFiles="@(Bundles)" DestinationFolder="$(FikaHeadPath)$(DestDir)\bundles\%(RecursiveDir)" />
-  </Target>
-  <Target Name="CopyOutputFikaClient" AfterTargets="Build" Condition="'$(FikaClientPath)' != ''">
-    <Copy SourceFiles="@(OutputDLL)" DestinationFolder="$(FikaClientPath)$(DestDir)" />
-    <Copy SourceFiles="@(Config)" DestinationFolder="$(FikaClientPath)$(DestDir)\config\%(RecursiveDir)" />
-    <Copy SourceFiles="@(Bundles)" DestinationFolder="$(FikaClientPath)$(DestDir)\bundles\%(RecursiveDir)" />
+  <!-- The mod DLL and any ModContent declared by the project -->
+  <Target Name="CollectModFiles">
+    <ItemGroup>
+      <ModFile Include="$(TargetPath)" />
+    </ItemGroup>
   </Target>
 
-  <!--  Release -->
-  <Target Name="CopyOutputRelease" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
-    <Copy SourceFiles="@(OutputDLL)" DestinationFolder="$(SolutionDir)Dist\$(SolutionName)\$(DestDir)" />
-    <Copy SourceFiles="@(Config)" DestinationFolder="$(SolutionDir)Dist\$(SolutionName)\$(DestDir)\config\%(RecursiveDir)" />
-    <Copy SourceFiles="@(Bundles)" DestinationFolder="$(SolutionDir)Dist\$(SolutionName)\$(DestDir)\bundles\%(RecursiveDir)" />
-    <ZipDirectory
-      SourceDirectory="$(SolutionDir)Dist\$(SolutionName)"
-      DestinationFile="$(SolutionDir)Dist\$(Authors).$(SolutionName)-$(Version).zip"
-      Overwrite="true"
-    />
+  <Target Name="InstallMod" AfterTargets="PostBuildEvent" DependsOnTargets="CollectModFiles" Condition="'$(InstallMod)' == 'True'">
+    <Error Condition="'$(SPTPath)' == ''" Text="Missing SPT path" />
+    <Error Condition="'$(InstallOnHeadless)' == 'True' and '$(HeadlessPath)' != '' and !Exists('$(HeadlessPath)\BepInEx\plugins')" Text="Headless not found at '$(HeadlessPath)'" />
+    <Copy SourceFiles="@(ModFile)" DestinationFolder="$(SPTPath)\$(ModDir)">
+      <Output TaskParameter="CopiedFiles" ItemName="InstalledFiles" />
+    </Copy>
+    <Copy SourceFiles="@(ModContent)" DestinationFiles="@(ModContent->'$(SPTPath)\$(ModDir)\%(Identity)')">
+      <Output TaskParameter="CopiedFiles" ItemName="InstalledFiles" />
+    </Copy>
+    <Copy SourceFiles="@(ModFile)" DestinationFolder="$(HeadlessPath)\$(ModDir)" Condition="'$(InstallOnHeadless)' == 'True' and '$(HeadlessPath)' != ''">
+      <Output TaskParameter="CopiedFiles" ItemName="InstalledFiles" />
+    </Copy>
+    <Copy SourceFiles="@(ModContent)" DestinationFiles="@(ModContent->'$(HeadlessPath)\$(ModDir)\%(Identity)')" Condition="'$(InstallOnHeadless)' == 'True' and '$(HeadlessPath)' != ''">
+      <Output TaskParameter="CopiedFiles" ItemName="InstalledFiles" />
+    </Copy>
+    <Message Importance="High" Text="$(MSBuildProjectName) installed to @(InstalledFiles->'%(FullPath)')" />
+  </Target>
+
+  <Target Name="PackageRelease" AfterTargets="Build" DependsOnTargets="CollectModFiles" Condition="'$(PackageRelease)' == 'True'">
+    <Copy SourceFiles="@(ModFile)" DestinationFolder="$(ReleaseDir)\$(ModDir)">
+      <Output TaskParameter="CopiedFiles" ItemName="PackagedFiles" />
+    </Copy>
+    <Copy SourceFiles="@(ModContent)" DestinationFiles="@(ModContent->'$(ReleaseDir)\$(ModDir)\%(Identity)')">
+      <Output TaskParameter="CopiedFiles" ItemName="PackagedFiles" />
+    </Copy>
+    <Message Importance="High" Text="$(MSBuildProjectName) packaged to @(PackagedFiles->'%(FullPath)')" />
   </Target>
 </Project>

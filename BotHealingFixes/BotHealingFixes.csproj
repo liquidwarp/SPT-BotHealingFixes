@@ -1,14 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <LangVersion>preview</LangVersion>
+    <LangVersion>latest</LangVersion>
     <RootNamespace>BotHealingFixes</RootNamespace>
-    <Version>1.0.0</Version>
-    <Authors>ozen</Authors>
-    <AssemblyName>$(Authors).$(RootNamespace)</AssemblyName>
-    <RepositoryUrl>https://github.com/ozen-m/SPT-BotHealingFixes</RepositoryUrl>
-    <DebugType>portable</DebugType>
-    <PathMap Condition="'$(Configuration)' == 'Release'">$(MSBuildProjectDirectory)=/src/</PathMap>
+    <AssemblyName>$(Authors).$(ModName)</AssemblyName>
+    <ModDir>BepInEx\plugins\$(Authors).$(ModName)</ModDir>
+    <InstallOnHeadless>True</InstallOnHeadless>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,58 +18,41 @@
 
   <ItemGroup>
     <Reference Include="0Harmony">
-      <HintPath>$(SPTPath)BepInEx\core\0Harmony.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="Comfort">
-      <HintPath>$(SPTPath)EscapeFromTarkov_Data\Managed\Comfort.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="DissonanceVoip">
-      <HintPath>$(SPTPath)EscapeFromTarkov_Data\Managed\DissonanceVoip.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="DrakiaXYZ-BigBrain">
-      <HintPath>..\References\DrakiaXYZ-BigBrain.dll</HintPath>
-    </Reference>
-    <Reference Include="ItemComponent.Types">
-      <HintPath>$(SPTPath)EscapeFromTarkov_Data\Managed\ItemComponent.Types.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="NLog">
-      <HintPath>$(SPTPath)EscapeFromTarkov_Data\Managed\NLog.dll</HintPath>
-    </Reference>
-    <Reference Include="spt-reflection">
-      <HintPath>$(SPTPath)BepInEx\plugins\spt\spt-reflection.dll</HintPath>
-      <Private>false</Private>
+      <HintPath>$(SPTPath)\BepInEx\core\0Harmony.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>$(SPTPath)EscapeFromTarkov_Data\Managed\Assembly-CSharp.dll</HintPath>
-      <Private>false</Private>
+      <HintPath>$(SPTPath)\EscapeFromTarkov_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="BepInEx">
-      <HintPath>$(SPTPath)BepInEx\core\BepInEx.dll</HintPath>
-      <Private>false</Private>
+      <HintPath>$(SPTPath)\BepInEx\core\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="Comfort">
+      <HintPath>$(SPTPath)\EscapeFromTarkov_Data\Managed\Comfort.dll</HintPath>
+    </Reference>
+    <Reference Include="DissonanceVoip">
+      <HintPath>$(SPTPath)\EscapeFromTarkov_Data\Managed\DissonanceVoip.dll</HintPath>
+    </Reference>
+    <Reference Include="DrakiaXYZ-BigBrain">
+      <HintPath>$(SPTPath)\BepInEx\plugins\DrakiaXYZ-BigBrain.dll</HintPath>
+    </Reference>
+    <Reference Include="ItemComponent.Types">
+      <HintPath>$(SPTPath)\EscapeFromTarkov_Data\Managed\ItemComponent.Types.dll</HintPath>
+    </Reference>
+    <Reference Include="NLog">
+      <HintPath>$(SPTPath)\EscapeFromTarkov_Data\Managed\NLog.dll</HintPath>
+    </Reference>
+    <Reference Include="spt-reflection">
+      <HintPath>$(SPTPath)\BepInEx\plugins\spt\spt-reflection.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>$(SPTPath)EscapeFromTarkov_Data\Managed\UnityEngine.dll</HintPath>
-      <Private>false</Private>
+      <HintPath>$(SPTPath)\EscapeFromTarkov_Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>$(SPTPath)EscapeFromTarkov_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
-      <Private>false</Private>
+      <HintPath>$(SPTPath)\EscapeFromTarkov_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
   </ItemGroup>
 
-  <Target Name="SetOutput" AfterTargets="Build">
-    <PropertyGroup>
-      <DestDir>BepInEx\plugins\$(Authors).$(SolutionName)</DestDir>
-      <DestDir Condition="'$(Configuration)' == 'Debug'">BepInEx\scripts\</DestDir>
-    </PropertyGroup>
-    <ItemGroup>
-      <OutputDLL Include="$(TargetPath)" />
-      <OutputDLL Include="$(TargetDir)$(TargetName).pdb" />
-      <OutputDLL Include="..\LICENSE" />
-    </ItemGroup>
+  <Target Name="RequireSPTPath" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="'$(SPTPath)' == ''" Text="Missing SPT path" />
   </Target>
 </Project>

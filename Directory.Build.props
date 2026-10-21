@@ -1,0 +1,17 @@
+<Project>
+
+  <PropertyGroup>
+    <Authors>ozen</Authors>
+    <ModName>BotHealingFixes</ModName>
+    <ModGuid>com.ozen.bothealingfixes</ModGuid>
+    <Version>1.0.0</Version>
+    <ClientSPTVersion>4.1.6</ClientSPTVersion>
+    <Product>Bot Healing Fixes</Product>
+    <ReleaseDir>$(MSBuildThisFileDirectory)releases\$(Authors)-$(ModName)-$(Version)</ReleaseDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>None</DebugType>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+  </PropertyGroup>
+</Project>
