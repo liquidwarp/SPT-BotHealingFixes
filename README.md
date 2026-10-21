@@ -1,34 +1,13 @@
-# Bot Healing Fixes
-Ever notice how bots can never fully heal?
+# Modifications of ozen's Bot Healing Fixes
 
----
+Fork of Bot Healing Fixes. The forked SAIN requires this version.
 
-**Bot Healing Fixes** fixes a couple issues with bot healing.
+## Fixes
 
-### Fixes
-- Bots generally failing to heal
-- Bots unable to heal completely
-- Bots getting stuck while healing
-- Bots unable to heal a limb with less than 5% HP
-- Bots unable to heal after being shot at while healing
-- Bots can't heal a bleed when its assigned med item does not cover the cost
-- Bots trying to do surgery on non-surgery body parts
-- Bots unable to successively heal
-
-### Installation
-- Extract the contents of the .zip archive into your SPT folder.
-
-#### Note to Fika users:
-- Must be installed on the **host**
-
-<details>
-  <summary>Demonstration</summary>
-
-![Installation](https://i.imgur.com/3N6gTe2.gif)
-Thank you [DrakiaXYZ](https://forge.sp-tarkov.com/user/27605/drakiaxyz) for the gif
-</details>
-
-<details>
-  <summary>Support</summary>
-If you find any bugs, or have feature suggestions, feel free to open an issue on GitHub, or most preferably through the SPT Discord, ozen
-</details>
+- Fix bots stopping bleeds with medkits, or with items that can't afford the bleed, instead of tourniquets and bandages. Medkit HP now goes to healing and surgical kit uses to surgery. Heavy bleeds are treated before light ones.
+- Fix bots using up a medkit on a bleed it can't afford to stop, instead of healing with it.
+- Fix bots doing surgery with items that can't afford it, such as medkits that mods give a surgery effect. Dedicated surgical kits come first.
+- Fix bots holding on to a used-up med item instead of switching or picking nothing.
+- Fix bots reacting late to a new bleed or a destroyed limb. They pick the right item and body part as soon as it happens, not at the game's next check.
+- Fix bots injecting whichever stim comes first, and getting stuck unable to use stims again if one fails to go in hand. They pick one for their needs: a bleed-stopping stim when bleeding, a healing stim when hurt, and keep those for when they're needed. They never inject stims that drain HP (M.U.L.E, SJ9, Obdolbos...); those bring questionable combat benefits anyway.
+- Bots now use stims as a last resort when their med items can't cover their needs: a bleed-stopping stim (Zagustin, AHF1-M, Perfotoran) for a bleed nothing else can treat, a healing stim (eTG-c, Propital...) when they have no medkit left.

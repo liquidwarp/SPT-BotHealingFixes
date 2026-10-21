@@ -1,8 +1,8 @@
 ﻿#if DEBUG
 using System.Text;
-using BotHealingFixes.Utils;
 using DrakiaXYZ.BigBrain.Brains;
 using EFT;
+using EFT.HealthSystem;
 using EFT.InventoryLogic;
 using UnityEngine;
 
@@ -132,10 +132,10 @@ public class DebugHealLayer(BotOwner botOwner, int priority) : CustomLayer(botOw
 
     private string GetBleedLabel(EBodyPart bodyPart)
     {
-        return BotOwner.HealthController.GetBleedType(bodyPart) switch
+        return BotOwner.HealthController.FindActiveEffect<IBleeding>(bodyPart) switch
         {
-            MedUtils.EBleedType.Light => "(LBL)",
-            MedUtils.EBleedType.Heavy => "(HBL)",
+            ILightBleeding => "(LBL)",
+            IHeavyBleeding => "(HBL)",
             _ => string.Empty,
         };
     }

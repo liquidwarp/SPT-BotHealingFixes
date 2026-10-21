@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Comfort.Common;
@@ -22,16 +23,14 @@ public static class MedUtils
         Action<BotOwner>
     >("_onEndApply");
 
-    public static async Task ApplyMedicineAsync(this BotAbstractMedsToPart botMeds, TimeSpan timeout, Action callback)
+    public static Task ApplyMedicineAsync(this BotAbstractMedsToPart botMeds, TimeSpan timeout, Action callback)
+    {
+        return botMeds.ApplyMedicineAsync(botMeds.CurUsingMeds, botMeds._bodyPartToHeal!.Value, timeout, callback);
+    }
+
+    public static async Task ApplyMedicineAsync(this BotAbstractMeds botMeds, Meds meds, EBodyPart bodyPart, TimeSpan timeout, Action callback)
     {
         L.Debug($"{botMeds.GetType()}: {botMeds.Name()} Start");
-
-        botMeds.Using = true;
-        botMeds._owner.BotTalk.Say(EPhraseTrigger.StartHeal);
-        if (botMeds is BotFirstAid firstAid)
-        {
-            _onStartApplyField(firstAid)?.Invoke(firstAid._owner);
-        }
 
         var setInHandsSource = new TaskCompletionSource<Result<IMedsController>>();
 
@@ -43,15 +42,27 @@ public static class MedUtils
             setInHandsSource
         );
 
-        botMeds._owner.GetPlayer.SetInHands(
-            botMeds.CurUsingMeds,
-            botMeds._bodyPartToHeal!.Value,
-            0, // Actually unused
-            setInHandsSource.SetResult
-        );
+        botMeds.Using = true;
         var successful = false;
         try
         {
+            botMeds._owner.BotTalk.Say(EPhraseTrigger.StartHeal);
+            switch (botMeds)
+            {
+                case BotFirstAid firstAid:
+                    _onStartApplyField(firstAid)?.Invoke(firstAid._owner);
+                    break;
+                case BotStimulators stimulators:
+                    stimulators.LastUseTime = Time.time;
+                    break;
+            }
+
+            botMeds._owner.GetPlayer.SetInHands(
+                meds,
+                bodyPart,
+                0, // Actually unused
+                setInHandsSource.SetResult
+            );
             var hands = await setInHandsSource.Task;
             if (botMeds._lastIsCanceled)
             {
@@ -112,53 +123,52 @@ public static class MedUtils
         OnEndApply(botMeds, successful, callback);
     }
 
-    public static void OnEndApply(BotAbstractMedsToPart botMeds, bool successful, Action callback)
+    public static void OnEndApply(BotAbstractMeds botMeds, bool successful, Action callback)
     {
         L.Debug($"{botMeds.GetType()}: {botMeds.Name()} OnEndApply");
 
         botMeds.Using = false;
 
         // Need to set time for all healing so they don't heal immediately to the next, which causes a problem for TakeWeapon.
-        var nextPossibleUseTime = Time.time + botMeds._owner.Settings.FileSettings.Mind.HEAL_DELAY_SEC;
-        botMeds._owner.Medecine.FirstAid._nextPosibleUseTime = nextPossibleUseTime;
-        botMeds._owner.Medecine.SurgicalKit._nextPosibleUseTime = nextPossibleUseTime;
-        botMeds._owner.Medecine.Stimulators._nextPosibleUseTime = Mathf.Max(
-            botMeds._owner.Medecine.Stimulators._nextPosibleUseTime,
-            nextPossibleUseTime
-        );
+        var medecine = botMeds._owner.Medecine;
+        var mind = botMeds._owner.Settings.FileSettings.Mind;
+        var nextPossibleUseTime = Time.time + mind.HEAL_DELAY_SEC;
+        medecine.FirstAid._nextPosibleUseTime = nextPossibleUseTime;
+        medecine.SurgicalKit._nextPosibleUseTime = nextPossibleUseTime;
+        medecine.Stimulators._nextPosibleUseTime = Mathf.Max(medecine.Stimulators._nextPosibleUseTime, nextPossibleUseTime);
 
+        // Whichever was used, refresh every pick: items can do both first aid and surgery, so the other's may no longer afford its
+        // job (e.g. from mod MakeMedsGreatAgain), and first aid can fall back to an injector.
+        medecine.FirstAid.RefreshAndFindDamagedPart();
         switch (botMeds)
         {
             case BotFirstAid firstAid:
                 if (successful)
                 {
-                    firstAid.FindDamagedPart();
                     firstAid.FirstAidApplied();
                 }
-                firstAid.RefreshMeds();
                 firstAid._lastEndTime = Time.time;
                 _onEndApplyField(firstAid)?.Invoke(botMeds._owner);
                 break;
-            case BotSurgicalKit surgical:
-                if (successful)
-                {
-                    surgical.FindDamagedPart();
-                    surgical._owner.Medecine.FirstAid.FindDamagedPart();
-                }
-                surgical.RefreshMeds();
+            case BotStimulators stimulators:
+                stimulators.LastEndUseTime = Time.time;
+                stimulators._nextPosibleUseTime = Mathf.Max(nextPossibleUseTime, Time.time + mind.FOOD_DRINK_DELAY_SEC);
                 break;
         }
-        callback?.Invoke();
+        medecine.SurgicalKit.RefreshMeds();
+        medecine.SurgicalKit.FindDamagedPart();
+        medecine.Stimulators.FindMeds();
+
+        if (botMeds is not BotStimulators || successful)
+        {
+            callback?.Invoke();
+        }
     }
 
-    public static EBleedType GetBleedType(this IHealthController health, EBodyPart part = EBodyPart.Common)
+    public static void RefreshAndFindDamagedPart(this BotFirstAid firstAid)
     {
-        return health.FindActiveEffect<IBleeding>(part) switch
-        {
-            ILightBleeding => EBleedType.Light,
-            IHeavyBleeding => EBleedType.Heavy,
-            _ => EBleedType.None,
-        };
+        firstAid.RefreshMeds();
+        firstAid.FindDamagedPart();
     }
 
     public static bool Affects(this HealthEffectsComponent healthEffects, EDamageEffectType damageEffect, out float cost)
@@ -172,10 +182,101 @@ public static class MedUtils
         return false;
     }
 
-    public enum EBleedType
+    public static List<Meds> GetAvailableMeds(this BotAbstractMeds botMeds, bool shallUseInSafe)
     {
-        None,
-        Light,
-        Heavy,
+        var medsList = botMeds._medsList;
+        medsList.Clear();
+        botMeds._owner.GetPlayer.InventoryController.GetAcceptableItemsNonAlloc(
+            shallUseInSafe ? BotMedecine.secureSlots : BotMedecine.anySlots,
+            medsList
+        );
+        return medsList;
+    }
+
+    private static int GetBleedMedsRank(Meds meds)
+    {
+        if (meds is Stimulator)
+        {
+            return 3;
+        }
+        if (meds is MedKit)
+        {
+            return 1;
+        }
+        return meds.HealthEffectsComponent.Affects(EDamageEffectType.DestroyedPart, out _) ? 2 : 0;
+    }
+
+    public static bool CanAfford(Meds meds, EDamageEffectType damageEffect)
+    {
+        return meds.HealthEffectsComponent.Affects(damageEffect, out var cost)
+            && (meds.MedKitComponent == null || cost <= meds.MedKitComponent.HpResource);
+    }
+
+    public static bool CanTreat(Meds meds, EDamageEffectType damageEffect)
+    {
+        if (meds is Stimulator)
+        {
+            return damageEffect is EDamageEffectType.HeavyBleeding or EDamageEffectType.LightBleeding && StimUtils.StopsBleeding(meds);
+        }
+        return CanAfford(meds, damageEffect);
+    }
+
+    /// Dedicated surgical kits (CMS, Surv12) before medkits, which mods like MakeMedsGreatAgain give surgery, so surgery doesn't
+    /// drain the bot's HP healing.
+    public static Meds FindSurgeryMeds(List<Meds> medsList)
+    {
+        Meds medKit = null;
+        foreach (var meds in medsList)
+        {
+            if (!CanAfford(meds, EDamageEffectType.DestroyedPart))
+            {
+                continue;
+            }
+            if (meds is not MedKit)
+            {
+                return meds;
+            }
+            medKit ??= meds;
+        }
+        return medKit;
+    }
+
+    public static Meds FindBleedMeds(this IHealthController health, List<Meds> medsList)
+    {
+        const int lightOnlyScore = 4;
+
+        var heavyBleeding = health.FindExistingEffect<IHeavyBleeding>() != null;
+        var lightBleeding = health.FindExistingEffect<ILightBleeding>() != null;
+        if (!heavyBleeding && !lightBleeding)
+        {
+            return null;
+        }
+
+        var bestPossibleScore = heavyBleeding ? 0 : lightOnlyScore;
+        Meds bestMeds = null;
+        var bestScore = int.MaxValue;
+        foreach (var meds in medsList)
+        {
+            var score = GetBleedMedsRank(meds);
+            if (!heavyBleeding || !CanTreat(meds, EDamageEffectType.HeavyBleeding))
+            {
+                if (!lightBleeding || !CanTreat(meds, EDamageEffectType.LightBleeding))
+                {
+                    continue;
+                }
+                score += lightOnlyScore;
+            }
+
+            if (score < bestScore)
+            {
+                bestMeds = meds;
+                bestScore = score;
+                if (score == bestPossibleScore)
+                {
+                    break;
+                }
+            }
+        }
+        return bestMeds;
     }
 }
