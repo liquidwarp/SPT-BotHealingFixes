@@ -10,7 +10,7 @@ namespace BotHealingFixes.Patches.Debug;
 [DebugPatch]
 public class RegisterTakeWeaponPatch : ModulePatch
 {
-    private static bool _shouldRun;
+    private static bool _shouldRun = false;
 
     private static readonly MethodInfo _takeMainWeaponInfo = AccessTools.Method(
         typeof(BotWeaponSelector),

@@ -9,7 +9,7 @@ namespace BotHealingFixes.Patches.Debug;
 [DebugPatch]
 public class NLoggerPatch : ModulePatch
 {
-    private static bool _shouldRun;
+    private static bool _shouldRun = false;
 
     protected override MethodBase GetTargetMethod()
     {

@@ -105,7 +105,7 @@ public static class MedUtils
         }
         finally
         {
-            setInHandsRegistration.Dispose();
+            await setInHandsRegistration.DisposeAsync();
             timeoutSource.Dispose();
         }
 
