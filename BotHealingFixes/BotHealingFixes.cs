@@ -8,7 +8,7 @@ using DrakiaXYZ.BigBrain.Brains;
 
 namespace BotHealingFixes;
 
-[BepInPlugin("com.ozen.bothealingfixes", "Bot Healing Fixes", "1.0.0")]
+[BepInPlugin(MyModInfo.MOD_GUID, MyModInfo.MOD_NAME, MyModInfo.MOD_VERSION)]
 #if DEBUG
 [BepInDependency("xyz.drakia.bigbrain", "1.5.0")]
 #endif
