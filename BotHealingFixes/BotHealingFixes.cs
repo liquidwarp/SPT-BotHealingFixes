@@ -19,6 +19,7 @@ public class BotHealingFixes : BaseUnityPlugin
     public void Awake()
     {
         L.SetLogger(Logger);
+        L.Info($"Version {MyModInfo.MOD_FULL_VERSION}");
 
         _patchManager = new PatchManager(this, true);
         _patchManager.EnablePatches();

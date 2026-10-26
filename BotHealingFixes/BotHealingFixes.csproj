@@ -16,6 +16,12 @@
     <PackageReference Include="RoR2.BepInEx.Analyzers" Version="1.0.*" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemDefinitionGroup>
+    <Reference>
+      <Private>false</Private>
+    </Reference>
+  </ItemDefinitionGroup>
+
   <ItemGroup>
     <Reference Include="0Harmony">
       <HintPath>$(SPTPath)\BepInEx\core\0Harmony.dll</HintPath>

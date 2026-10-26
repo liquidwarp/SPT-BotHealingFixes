@@ -11,7 +11,8 @@ internal static class MyModInfo
     public const string MOD_GUID = "$(ModGuid)"%3B
     public const string MOD_NAME = "$(Product)"%3B
     public const string MOD_AUTHOR = "$(Authors)"%3B
-    public const string MOD_VERSION = "$(Version)"%3B
+    public const string MOD_VERSION = "$(VersionPrefix)"%3B
+    public const string MOD_FULL_VERSION = "$(Version)"%3B
     public const string CLIENT_SPT_VERSION = "$(ClientSPTVersion)"%3B
 }
 ]]></MyModInfoText>
@@ -23,7 +24,6 @@ internal static class MyModInfo
     </ItemGroup>
   </Target>
 
-  <!-- The mod DLL and any ModContent declared by the project -->
   <Target Name="CollectModFiles">
     <ItemGroup>
       <ModFile Include="$(TargetPath)" />
