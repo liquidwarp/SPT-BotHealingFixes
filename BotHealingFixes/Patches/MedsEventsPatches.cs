@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using BotHealingFixes.Utils;
 using HarmonyLib;
 using SPT.Reflection.Patching;
@@ -29,6 +29,7 @@ public class MedsEventsDisposePatch : ModulePatch
     [PatchPrefix]
     protected static void Prefix(BotMedecine __instance)
     {
+        MedUtils.ForgetBot(__instance);
         MedsEventsHandler.Unsubscribe(__instance);
     }
 }

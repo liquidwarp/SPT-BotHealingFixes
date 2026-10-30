@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using BotHealingFixes.Utils;
 using HarmonyLib;
@@ -26,7 +26,7 @@ public class BotSurgicalKitPatch : ModulePatch
             return false;
         }
 
-        _ = __instance.ApplyMedicineAsync(TimeSpan.FromSeconds(60D), callbackEndUse);
+        __instance.ApplyMedicine(60f, callbackEndUse);
         return false;
     }
 }

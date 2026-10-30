@@ -1,4 +1,4 @@
-﻿using BepInEx;
+using BepInEx;
 using BotHealingFixes.Utils;
 using SPT.Reflection.Patching;
 #if DEBUG
@@ -15,6 +15,7 @@ namespace BotHealingFixes;
 public class BotHealingFixes : BaseUnityPlugin
 {
     private PatchManager _patchManager;
+    private float _nextMedicalUpdate;
 
     public void Awake()
     {
@@ -27,6 +28,15 @@ public class BotHealingFixes : BaseUnityPlugin
 #if DEBUG
         BrainManager.AddCustomLayer(typeof(DebugHealLayer), ["PMC", "PmcUsec", "PmcBear", "Assault", "CursAssault"], int.MaxValue);
 #endif
+    }
+
+    private void Update()
+    {
+        float now = UnityEngine.Time.realtimeSinceStartup;
+        if (now < _nextMedicalUpdate)
+            return;
+        _nextMedicalUpdate = now + 0.1f;
+        MedUtils.UpdateApplications(now);
     }
 
 #if DEBUG

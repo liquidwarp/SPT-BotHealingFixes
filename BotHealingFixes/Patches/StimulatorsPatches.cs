@@ -51,11 +51,12 @@ public class StimulatorsTryApplyPatch : ModulePatch
             return false;
         }
 
-        _ = __instance.ApplyMedicineAsync(
+        __instance.ApplyMedicine(
             __instance._stimulator,
             EBodyPart.Chest,
-            TimeSpan.FromSeconds(30D),
-            callback == null ? null : () => callback(true)
+            30f,
+            null,
+            callback
         );
         return false;
     }

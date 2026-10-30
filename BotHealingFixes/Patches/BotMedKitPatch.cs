@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using BotHealingFixes.Utils;
 using HarmonyLib;
@@ -16,7 +16,7 @@ public class BotMedKitPatch : ModulePatch
     [PatchPrefix]
     public static bool PatchPrefix(BotFirstAid __instance, Action callback)
     {
-        _ = __instance.ApplyMedicineAsync(TimeSpan.FromSeconds(30D), callback);
+        __instance.ApplyMedicine(30f, callback);
         return false;
     }
 }
