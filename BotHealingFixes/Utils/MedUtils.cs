@@ -44,6 +44,16 @@ public static class MedUtils
         private float _deadline;
         private bool _cancelled;
         private bool _successful;
+#if DEBUG
+        // Temporary diagnostics: report treatments that end unusually, wait long for the weapon, or stay active too long.
+        private const float DiagnosticsSlowRestore = 2f;
+        private const float DiagnosticsStuck = 90f;
+        private float _diagnosticsStart;
+        private float _diagnosticsUseEnd;
+        private bool _diagnosticsTookMainWeapon;
+        private bool _diagnosticsLostCallback;
+        private bool _diagnosticsStuckReported;
+#endif
 
         public MedicalApplication(BotOwner owner)
         {
@@ -68,6 +78,13 @@ public static class MedUtils
             _cancelled = false;
             _successful = false;
             _deadline = Time.realtimeSinceStartup + timeout;
+#if DEBUG
+            _diagnosticsStart = Time.realtimeSinceStartup;
+            _diagnosticsUseEnd = -1f;
+            _diagnosticsTookMainWeapon = false;
+            _diagnosticsLostCallback = false;
+            _diagnosticsStuckReported = false;
+#endif
             _phase = Phase.Equipping;
             _activeApplications.Add(this);
             meds.Using = true;
@@ -187,6 +204,13 @@ public static class MedUtils
                     Abandon();
                     return;
                 }
+#if DEBUG
+                if (!_diagnosticsStuckReported && now - _diagnosticsStart > DiagnosticsStuck)
+                {
+                    _diagnosticsStuckReported = true;
+                    LogDiagnostics(player, $"still active after {now - _diagnosticsStart:F0}s");
+                }
+#endif
                 if (_phase == Phase.Using && _cancelled)
                 {
                     Cancel();
@@ -201,6 +225,9 @@ public static class MedUtils
                     // A missing equip or use callback leaves nothing in flight once EFT's hands process is idle.
                     if ((_phase == Phase.Equipping || _phase == Phase.Using) && player.ProcessStatus == Player.EProcessStatus.None)
                     {
+#if DEBUG
+                        _diagnosticsLostCallback = true;
+#endif
                         var current = player.HandsController as Player.MedsController;
                         if (current != null && ReferenceEquals(current.Item, _item))
                         {
@@ -210,6 +237,11 @@ public static class MedUtils
                         _phase = Phase.RestorePending;
                     }
                 }
+#if DEBUG
+                // Sampled after this tick's own transitions, so a use ended and completed within one tick is still timed.
+                if (_phase >= Phase.RestorePending && _diagnosticsUseEnd < 0f)
+                    _diagnosticsUseEnd = now;
+#endif
                 if (_phase == Phase.RestorePending)
                 {
                     if (!ReferenceEquals(player.HandsController, _controller))
@@ -226,6 +258,9 @@ public static class MedUtils
                             || (player.ProcessStatus == Player.EProcessStatus.None && ReferenceEquals(player.HandsController, _controller)))
                         {
                             L.Warning($"{_meds.GetType()}: {_meds.Name()} Previous weapon unavailable; taking main weapon");
+#if DEBUG
+                            _diagnosticsTookMainWeapon = true;
+#endif
                             selector.TakeMainWeapon();
                         }
                         _phase = Phase.Restored;
@@ -272,8 +307,33 @@ public static class MedUtils
             _meds = null;
         }
 
+#if DEBUG
+        private void LogDiagnostics(Player player, string what)
+        {
+            var hands = player.HandsController;
+            float now = Time.realtimeSinceStartup;
+            string use = _diagnosticsUseEnd < 0f ? "not ended" : $"{_diagnosticsUseEnd - _diagnosticsStart:F1}s";
+            string restore = _diagnosticsUseEnd < 0f ? "-" : $"{now - _diagnosticsUseEnd:F1}s";
+            L.Info(
+                $"{_meds.GetType()}: {_meds.Name()} {_item?.Name} {what} in {_phase}; successful {_successful}, cancelled {_cancelled},"
+                    + $" lost callback {_diagnosticsLostCallback}, took main weapon {_diagnosticsTookMainWeapon};"
+                    + $" equip+use {use}, restore wait {restore};"
+                    + $" hands {(hands == null ? "none" : hands.GetType().Name)} ours {ReferenceEquals(hands, _controller)},"
+                    + $" process {player.ProcessStatus}, reloading {_owner.WeaponManager.Reload?.Reloading == true},"
+                    + $" weapon ready {_owner.WeaponManager.Selector.IsWeaponReady}"
+            );
+        }
+#endif
+
         private void Complete()
         {
+#if DEBUG
+            float restoreWait = _diagnosticsUseEnd < 0f ? 0f : Time.realtimeSinceStartup - _diagnosticsUseEnd;
+            if (!_successful || _cancelled || _diagnosticsTookMainWeapon || _diagnosticsLostCallback || restoreWait > DiagnosticsSlowRestore)
+            {
+                LogDiagnostics(_owner.GetPlayer, "ended");
+            }
+#endif
             var meds = _meds;
             var callback = _callback;
             var stimCallback = _stimCallback;
