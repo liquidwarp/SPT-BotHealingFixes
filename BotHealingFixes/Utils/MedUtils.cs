@@ -130,13 +130,7 @@ public static class MedUtils
             var player = _owner.GetPlayer;
             if (_controller == null || player == null || !ReferenceEquals(player.HandsController, _controller))
                 return;
-            _controller._failedToApply = true;
-            var operation = _controller.CurrentOperation;
-            if (operation._finished)
-                return;
-            // Run medical cleanup and completion callbacks instead of only assigning State.
-            operation.Remove();
-            operation.Finish();
+            _phase = Phase.RestorePending;
         }
 
         private void OnEquipped(Result<IMedsController> hands)
