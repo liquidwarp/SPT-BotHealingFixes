@@ -10,6 +10,9 @@ namespace BotHealingFixes.Brain;
 
 public class DebugHealLayer(BotOwner botOwner, int priority) : CustomLayer(botOwner, priority)
 {
+    // Takes over every bot it is registered for and keeps it standing still to heal; enable only to test healing.
+    private static bool _shouldRun = false;
+
     private readonly Action _healAction = new(typeof(DebugHealLogic), "DebugHealLogic");
 
     private readonly BotMedecine _meds = botOwner.Medecine;
@@ -21,7 +24,7 @@ public class DebugHealLayer(BotOwner botOwner, int priority) : CustomLayer(botOw
 
     public override bool IsActive()
     {
-        return true;
+        return _shouldRun;
     }
 
     public override Action GetNextAction()
