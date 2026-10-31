@@ -35,9 +35,16 @@ public class StimulatorsTryApplyPatch : ModulePatch
         return AccessTools.Method(typeof(BotStimulators), nameof(BotStimulators.TryApply));
     }
 
+    // ORBIT compat.
     [PatchPrefix]
-    protected static bool Prefix(BotStimulators __instance, bool noCheckDelay, Action<bool> callback)
+    [HarmonyPriority(Priority.Low)]
+    protected static bool Prefix(BotStimulators __instance, bool noCheckDelay, Action<bool> callback, bool __runOriginal)
     {
+        if (!__runOriginal)
+        {
+            return false;
+        }
+
         if (__instance._owner.WeaponManager.Reload.Reloading || __instance.Using || (!noCheckDelay && !__instance.CanUseNow()))
         {
             callback?.Invoke(false);

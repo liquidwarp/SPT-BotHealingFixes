@@ -13,10 +13,17 @@ public class BotMedKitPatch : ModulePatch
         return AccessTools.Method(typeof(BotFirstAid), nameof(BotFirstAid.ApplyToSelf));
     }
 
+    // Shaped for ORBIT compat.
     [PatchPrefix]
-    public static bool PatchPrefix(BotFirstAid __instance, Action callback)
+    [HarmonyPriority(Priority.Low)]
+    public static bool PatchPrefix(BotFirstAid __instance, Action callback, bool __runOriginal)
     {
-        __instance.ApplyMedicine(30f, callback);
+        if (!__runOriginal)
+        {
+            return false;
+        }
+
+        _ = __instance.ApplyMedicineAsync(TimeSpan.FromSeconds(30D), callback);
         return false;
     }
 }

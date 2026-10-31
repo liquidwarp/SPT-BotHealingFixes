@@ -13,11 +13,14 @@ public class BotSurgicalKitPatch : ModulePatch
         return AccessTools.Method(typeof(BotSurgicalKit), nameof(BotSurgicalKit.ApplyToCurrentPart));
     }
 
+    // Shaped for ORBIT compat.
     [PatchPrefix]
-    public static bool PatchPrefix(BotSurgicalKit __instance, Action callbackEndUse)
+    [HarmonyPriority(Priority.Low)]
+    public static bool PatchPrefix(BotSurgicalKit __instance, Action callbackEndUse, bool __runOriginal)
     {
         if (
-            !__instance._bodyPartToHeal.HasValue
+            !__runOriginal
+            || !__instance._bodyPartToHeal.HasValue
             || !__instance.HaveSmth2Use
             || __instance._owner.WeaponManager.Reload.Reloading
             || !__instance._owner.GetPlayer.HealthController.CanApplyItem(__instance.CurUsingMeds, __instance._bodyPartToHeal.Value)
@@ -26,7 +29,7 @@ public class BotSurgicalKitPatch : ModulePatch
             return false;
         }
 
-        __instance.ApplyMedicine(60f, callbackEndUse);
+        _ = __instance.ApplyMedicineAsync(TimeSpan.FromSeconds(60D), callbackEndUse);
         return false;
     }
 }

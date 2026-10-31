@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Comfort.Common;
 using EFT;
 using EFT.HealthSystem;
@@ -394,9 +396,12 @@ public static class MedUtils
         return true;
     }
 
-    public static void ApplyMedicine(this BotAbstractMedsToPart botMeds, float timeout, Action callback)
+    /// Shaped for ORBIT compat.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static Task ApplyMedicineAsync(this BotAbstractMedsToPart botMeds, TimeSpan timeout, Action callback)
     {
-        botMeds.ApplyMedicine(botMeds.CurUsingMeds, botMeds._bodyPartToHeal!.Value, timeout, callback);
+        botMeds.ApplyMedicine(botMeds.CurUsingMeds, botMeds._bodyPartToHeal!.Value, (float)timeout.TotalSeconds, callback);
+        return Task.CompletedTask;
     }
 
     public static void ApplyMedicine(
