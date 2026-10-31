@@ -26,7 +26,7 @@ public class DropCurrentController : ModulePatch
             return;
         }
         L.Debug(
-            $"DropCurrentController: [{__instance.Profile.GetCorrectedNickname()}] Dropping current controller, next item {nextControllerItem.LocalizedName()}\n\n{Environment.StackTrace}"
+            $"DropCurrentController: [{__instance.Profile.GetCorrectedNickname()}] Dropping current controller, next item {nextControllerItem?.TemplateId}\n\n{Environment.StackTrace}"
         );
     }
 }

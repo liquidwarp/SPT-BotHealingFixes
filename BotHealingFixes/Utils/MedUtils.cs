@@ -312,7 +312,7 @@ public static class MedUtils
             string use = _diagnosticsUseEnd < 0f ? "not ended" : $"{_diagnosticsUseEnd - _diagnosticsStart:F1}s";
             string restore = _diagnosticsUseEnd < 0f ? "-" : $"{now - _diagnosticsUseEnd:F1}s";
             L.Info(
-                $"{_meds.GetType()}: {_meds.Name()} {_item?.LocalizedName()} {what} in {_phase}; successful {_successful}, cancelled {_cancelled},"
+                $"{_meds.GetType()}: {_meds.Name()} {_item?.TemplateId} {what} in {_phase}; successful {_successful}, cancelled {_cancelled},"
                     + $" lost callback {_diagnosticsLostCallback}, took main weapon {_diagnosticsTookMainWeapon};"
                     + $" equip+use {use}, restore wait {restore};"
                     + $" hands {(hands == null ? "none" : hands.GetType().Name)} ours {ReferenceEquals(hands, _controller)},"
