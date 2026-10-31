@@ -56,6 +56,10 @@ public static class MedUtils
         private bool _diagnosticsTookMainWeapon;
         private bool _diagnosticsLostCallback;
         private bool _diagnosticsStuckReported;
+        private bool _diagnosticsEquipped;
+        private bool _diagnosticsUsed;
+        private bool _diagnosticsMismatchReported;
+        private EBodyPart _diagnosticsBodyPart;
 #endif
 
         public MedicalApplication(BotOwner owner)
@@ -87,6 +91,10 @@ public static class MedUtils
             _diagnosticsTookMainWeapon = false;
             _diagnosticsLostCallback = false;
             _diagnosticsStuckReported = false;
+            _diagnosticsEquipped = false;
+            _diagnosticsUsed = false;
+            _diagnosticsMismatchReported = false;
+            _diagnosticsBodyPart = bodyPart;
 #endif
             _phase = Phase.Equipping;
             _activeApplications.Add(this);
@@ -138,6 +146,9 @@ public static class MedUtils
         {
             if (_phase != Phase.Equipping)
                 return;
+#if DEBUG
+            _diagnosticsEquipped = true;
+#endif
             try
             {
                 var player = _owner.GetPlayer;
@@ -184,6 +195,9 @@ public static class MedUtils
         {
             if (_phase != Phase.Using)
                 return;
+#if DEBUG
+            _diagnosticsUsed = true;
+#endif
             _successful = used.Succeed && !_cancelled && !_controller._failedToApply;
             // Restore from the update tick, after the operation's callback stack has unwound.
             _phase = Phase.RestorePending;
@@ -202,6 +216,7 @@ public static class MedUtils
                     return;
                 }
 #if DEBUG
+                ReportHandsMismatch(player);
                 if (!_diagnosticsStuckReported && now - _diagnosticsStart > DiagnosticsStuck)
                 {
                     _diagnosticsStuckReported = true;
@@ -305,9 +320,28 @@ public static class MedUtils
         }
 
 #if DEBUG
+        private void ReportHandsMismatch(Player player)
+        {
+            if (_diagnosticsMismatchReported || (_phase != Phase.Equipping && _phase != Phase.Using))
+                return;
+            // Equipping can legitimately still have the previous hands while its process is in flight.
+            if (_phase == Phase.Equipping && player.ProcessStatus != Player.EProcessStatus.None)
+                return;
+            if (_phase == Phase.Using && _controller != null && ReferenceEquals(player.HandsController, _controller))
+            {
+                var operation = _controller.CurrentOperation;
+                if (operation != null && !operation._finished && !_controller._failedToApply)
+                    return;
+            }
+            // Observe before cancellation or timeout changes the phase; never alter treatment ownership here.
+            _diagnosticsMismatchReported = true;
+            LogDiagnostics(player, "first hands mismatch");
+        }
+
         private void LogDiagnostics(Player player, string what)
         {
             var hands = player.HandsController;
+            var operation = _controller == null ? null : _controller.CurrentOperation;
             float now = Time.realtimeSinceStartup;
             string use = _diagnosticsUseEnd < 0f ? "not ended" : $"{_diagnosticsUseEnd - _diagnosticsStart:F1}s";
             string restore = _diagnosticsUseEnd < 0f ? "-" : $"{now - _diagnosticsUseEnd:F1}s";
@@ -317,7 +351,14 @@ public static class MedUtils
                     + $" equip+use {use}, restore wait {restore};"
                     + $" hands {(hands == null ? "none" : hands.GetType().Name)} ours {ReferenceEquals(hands, _controller)},"
                     + $" process {player.ProcessStatus}, reloading {_owner.WeaponManager.Reload?.Reloading == true},"
-                    + $" weapon ready {_owner.WeaponManager.Selector.IsWeaponReady}"
+                    + $" weapon ready {_owner.WeaponManager.Selector.IsWeaponReady};"
+                    + $" elapsed {now - _diagnosticsStart:F1}s, deadline in {_deadline - now:F1}s, body part {_diagnosticsBodyPart};"
+                    + $" callbacks equipped {_diagnosticsEquipped}, used {_diagnosticsUsed}, mismatch reported {_diagnosticsMismatchReported};"
+                    + $" recorded controller {(ReferenceEquals(_controller, null) ? "none" : _controller.GetType().Name)}"
+                    + $"#{(ReferenceEquals(_controller, null) ? 0 : RuntimeHelpers.GetHashCode(_controller))}, available {_controller != null};"
+                    + $" current hands id {(ReferenceEquals(hands, null) ? 0 : RuntimeHelpers.GetHashCode(hands))}, item {hands?.Item?.Id};"
+                    + $" operation {(operation == null ? "none" : operation.GetType().Name)}, state {operation?.State},"
+                    + $" finished {operation?._finished}, failed to apply {(_controller == null ? (bool?)null : _controller._failedToApply)}"
             );
         }
 #endif
