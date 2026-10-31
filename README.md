@@ -15,4 +15,9 @@ Fork of Bot Healing Fixes. The forked SAIN requires this version.
 - Fix bots sometimes not drawing a weapon after healing. They fall back to their main weapon if the previous one isn't available.
 - Fix cancelled heals leaving the medical item running instead of putting it away.
 - Healing no longer allocates memory per treatment, which matters with garbage collection disabled in raid.
-- All canges compatible with SAIN, and ORBIT and its BotHealingFixes compatibility.
+- All changes compatible with SAIN, and ORBIT and its BotHealingFixes compatibility.
+
+## Development
+
+- Debug builds now log treatments that end unusually: cancelled or failed, a lost equip or use callback, a fallback to the main weapon, more than 5s to draw the weapon back, or still running after 90s. They appear in the log of the instance running bot logic, such as the Fika headless.
+- The debug heal test layer no longer takes over every bot in debug builds. It's off by default: set `_shouldRun` in `Brain/DebugHealLayer.cs` to use it.
