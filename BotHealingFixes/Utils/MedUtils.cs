@@ -47,9 +47,7 @@ public static class MedUtils
         private bool _cancelled;
         private bool _successful;
 #if DEBUG
-        // Temporary diagnostics: report treatments that end unusually, wait long for the weapon, or stay active too long.
-        // Hiding the item and drawing the weapon back normally takes up to ~3s.
-        private const float DiagnosticsSlowRestore = 5f;
+        // Temporary diagnostics: correlate treatment starts, callbacks, cancellations and completions.
         private const float DiagnosticsStuck = 90f;
         private float _diagnosticsStart;
         private float _diagnosticsUseEnd;
@@ -101,6 +99,10 @@ public static class MedUtils
             meds.Using = true;
             try
             {
+#if DEBUG
+                if (_owner.GetPlayer != null)
+                    LogDiagnostics(_owner.GetPlayer, "started");
+#endif
                 _owner.BotTalk.Say(EPhraseTrigger.StartHeal);
                 switch (meds)
                 {
@@ -129,6 +131,16 @@ public static class MedUtils
             // Use has already ended and the weapon is being restored; there is nothing left to cancel.
             if (_phase >= Phase.RestorePending)
                 return;
+#if DEBUG
+            // Capture the first request, before cancellation changes hands/operation state.
+            // A stack is allocated only for an actual cancellation, never on the update/polling path.
+            if (!_cancelled)
+            {
+                if (_owner.GetPlayer != null)
+                    LogDiagnostics(_owner.GetPlayer, "cancel requested");
+                L.Info($"{_meds.Name()} first medical cancellation caller:\n{new System.Diagnostics.StackTrace(1, false)}");
+            }
+#endif
             if (!_meds._lastIsCanceled && _meds._using)
             {
                 if (_meds._nextPosibleUseTime < Time.time + 3f)
@@ -199,6 +211,10 @@ public static class MedUtils
             _diagnosticsUsed = true;
 #endif
             _successful = used.Succeed && !_cancelled && !_controller._failedToApply;
+#if DEBUG
+            if (_owner.GetPlayer != null)
+                LogDiagnostics(_owner.GetPlayer, $"use callback (succeed {used.Succeed})");
+#endif
             // Restore from the update tick, after the operation's callback stack has unwound.
             _phase = Phase.RestorePending;
         }
@@ -346,7 +362,8 @@ public static class MedUtils
             string use = _diagnosticsUseEnd < 0f ? "not ended" : $"{_diagnosticsUseEnd - _diagnosticsStart:F1}s";
             string restore = _diagnosticsUseEnd < 0f ? "-" : $"{now - _diagnosticsUseEnd:F1}s";
             L.Info(
-                $"{_meds.GetType()}: {_meds.Name()} {_item?.TemplateId} {what} in {_phase}; successful {_successful}, cancelled {_cancelled},"
+                $"{DateTime.UtcNow:O} frame {Time.frameCount}, realtime {now:F3}, started {_diagnosticsStart:F3} | "
+                    + $"{_meds.GetType()}: {_meds.Name()} item {_item?.Id} ({_item?.TemplateId}) {what} in {_phase}; successful {_successful}, cancelled {_cancelled},"
                     + $" lost callback {_diagnosticsLostCallback}, took main weapon {_diagnosticsTookMainWeapon};"
                     + $" equip+use {use}, restore wait {restore};"
                     + $" hands {(hands == null ? "none" : hands.GetType().Name)} ours {ReferenceEquals(hands, _controller)},"
@@ -366,11 +383,8 @@ public static class MedUtils
         private void Complete()
         {
 #if DEBUG
-            float restoreWait = _diagnosticsUseEnd < 0f ? 0f : Time.realtimeSinceStartup - _diagnosticsUseEnd;
-            if (!_successful || _cancelled || _diagnosticsTookMainWeapon || _diagnosticsLostCallback || restoreWait > DiagnosticsSlowRestore)
-            {
-                LogDiagnostics(_owner.GetPlayer, "ended");
-            }
+            // Include ordinary completions too: a decision label or unchanged HP cannot prove whether an item was used.
+            LogDiagnostics(_owner.GetPlayer, "ended");
 #endif
             var meds = _meds;
             var callback = _callback;

@@ -19,5 +19,5 @@ Fork of Bot Healing Fixes. The forked SAIN requires this version.
 
 ## Development
 
-- Debug builds now log treatments that end unusually: cancelled or failed, a lost equip or use callback, a fallback to the main weapon, more than 5s to draw the weapon back, or still running after 90s. They appear in the log of the instance running bot logic, such as the Fika headless.
+- Debug builds log each treatment start, use callback result and completion, including ordinary successes. The first cancellation request also logs the current hands/operation state and caller stack. UTC timestamps, frame numbers, realtime start IDs and item IDs allow matching these events to RaidReview and SAIN cancellation diagnostics. Lost callbacks, weapon fallbacks, hands mismatches and treatments still active after 90s remain visible. These logs appear on the instance running bot logic, such as the Fika headless; caller stacks are captured only when cancellation is first requested.
 - The debug heal test layer no longer takes over every bot in debug builds. It's off by default: set `_shouldRun` in `Brain/DebugHealLayer.cs` to use it.
